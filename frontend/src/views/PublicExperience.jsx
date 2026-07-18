@@ -287,7 +287,7 @@ export default function PublicExperience({ session, onSignIn, onDashboard, onReq
 
   useEffect(() => {
     Promise.allSettled([getPublicDeals(), getPublicPulse(), getPublicConstellation()]).then(([dealResult, pulseResult]) => {
-      if (dealResult.status === 'fulfilled' && dealResult.value.deals?.length) {
+      if (dealResult.status === 'fulfilled' && dealResult.value?.deals?.length) {
         setDeals(dealResult.value.deals.map((deal, index) => ({
           ...deal,
           ask: Number(deal.funding_ask_usd || 0),
@@ -301,7 +301,7 @@ export default function PublicExperience({ session, onSignIn, onDashboard, onReq
           y: 16 + ((index * 23) % 68),
         })));
       }
-      if (pulseResult.status === 'fulfilled' && pulseResult.value.events?.length) {
+      if (pulseResult.status === 'fulfilled' && pulseResult.value?.events?.length) {
         setPulse(pulseResult.value.events.map((event) => ({ ...event, time: new Date(event.time).toLocaleDateString('vi-VN') })));
       }
     });
