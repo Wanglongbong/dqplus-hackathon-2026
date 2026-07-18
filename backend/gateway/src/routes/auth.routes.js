@@ -11,6 +11,7 @@ const router = Router();
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
@@ -30,9 +31,6 @@ const router = Router();
  *               role:
  *                 type: string
  *                 enum: [founder, investor]
- *               profileId:
- *                 type: string
- *                 format: uuid
  *     responses:
  *       201:
  *         description: User created
@@ -60,15 +58,21 @@ const router = Router();
  */
 router.post('/register', async (req, res, next) => {
   try {
-    const { username, password, dob, role, profileId } = req.body;
-    if (!username || !password || !role) {
+    const { username, password, dob, role } = req.body;
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password || !role) {
       return res.status(400).json({ error: 'username, password and role are required' });
     }
     if (!ROLES.includes(role)) {
       return res.status(400).json({ error: `role must be one of: ${ROLES.join(', ')}` });
     }
+    if (!/^\S+@\S+\.\S+$/.test(username)) {
+      return res.status(400).json({ error: 'username must be a valid email address' });
+    }
+    if (password.length < 8 || password.length > 128) {
+      return res.status(400).json({ error: 'password must be between 8 and 128 characters' });
+    }
 
-    const result = await authService.register({ username, password, dob, role, profileId });
+    const result = await authService.register({ username, password, dob, role });
     res.status(201).json(result);
   } catch (err) {
     next(err);
@@ -123,7 +127,7 @@ router.post('/register', async (req, res, next) => {
 router.post('/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       return res.status(400).json({ error: 'username and password are required' });
     }
 
@@ -166,8 +170,13 @@ router.post('/login', async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/me', authenticate, (req, res) => {
-  res.json({ user: req.user });
+router.get('/me', authenticate, async (req, res, next) => {
+  try {
+    const user = await authService.getCurrentUser(req.user.sub);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

@@ -11,6 +11,11 @@ Rules:
 - Monetary amounts are in USD numbers (e.g. "1.5M" -> 1500000).`;
 
 async function extractAttributes(role, text) {
+  if (!client) {
+    const err = new Error('AI text extraction is unavailable without an API key');
+    err.status = 503;
+    throw err;
+  }
   const schema = role === 'investor' ? investorSchema : founderSchema;
   const completion = await client.chat.completions.create({
     model: CHAT_MODEL,

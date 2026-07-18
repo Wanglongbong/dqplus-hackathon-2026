@@ -1,11 +1,13 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { isAdmin } = require('../middleware/authorizeAdmin');
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
 function sanitize(user) {
   const plain = user.toJSON();
   delete plain.password;
+  plain.isAdmin = isAdmin(plain.username);
   return plain;
 }
 
@@ -15,20 +17,21 @@ function issueToken(user) {
   });
 }
 
-async function register({ username, password, dob, role, profileId }) {
-  const existing = await User.findOne({ where: { username } });
+async function register({ username, password, dob, role }) {
+  const normalizedUsername = username.trim().toLowerCase();
+  const existing = await User.findOne({ where: { username: normalizedUsername } });
   if (existing) {
     const err = new Error('Username already taken');
     err.status = 409;
     throw err;
   }
 
-  const user = await User.create({ username, password, dob, role, profileId });
+  const user = await User.create({ username: normalizedUsername, password, dob, role });
   return { user: sanitize(user), token: issueToken(user) };
 }
 
 async function login({ username, password }) {
-  const user = await User.scope('withPassword').findOne({ where: { username } });
+  const user = await User.scope('withPassword').findOne({ where: { username: username.trim().toLowerCase() } });
   if (!user || !(await user.verifyPassword(password))) {
     const err = new Error('Invalid credentials');
     err.status = 401;
@@ -38,4 +41,14 @@ async function login({ username, password }) {
   return { user: sanitize(user), token: issueToken(user) };
 }
 
-module.exports = { register, login };
+async function getCurrentUser(id) {
+  const user = await User.findByPk(id);
+  if (!user) {
+    const err = new Error('User not found');
+    err.status = 404;
+    throw err;
+  }
+  return sanitize(user);
+}
+
+module.exports = { register, login, getCurrentUser };

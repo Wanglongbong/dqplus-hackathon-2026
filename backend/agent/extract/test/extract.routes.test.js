@@ -1,6 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+process.env.INTERNAL_SERVICE_TOKEN = 'dqplus-test-service-token';
+const nativeFetch = global.fetch;
+global.fetch = (url, options = {}) => nativeFetch(url, {
+  ...options,
+  headers: { ...(options.headers || {}), 'x-internal-service-token': process.env.INTERNAL_SERVICE_TOKEN },
+});
+
 const app = require('../src/app');
 const extractionService = require('../src/services/extraction.service');
 const embeddingService = require('../src/services/embedding.service');
@@ -73,6 +80,7 @@ test('POST /extract/text', async (t) => {
   });
 
   await t.test('propagates extraction failures as 500s', async (t) => {
+    t.mock.method(console, 'error', () => {});
     t.mock.method(extractionService, 'extractAttributes', async () => {
       throw new Error('openai unavailable');
     });
@@ -207,4 +215,22 @@ test('GET /extracted/:userId', async (t) => {
       assert.deepEqual(await res.json(), { error: 'No extracted profile for user' });
     });
   });
+});
+
+test('internal endpoints reject missing service credentials', async () => {
+  const { baseUrl, close } = await startTestServer(app);
+  try {
+    const res = await nativeFetch(`${baseUrl}/extracted/${USER_ID}`);
+    assert.equal(res.status, 401);
+  } finally { await close(); }
+});
+
+test('profile mapping keeps personal LinkedIn out of public match evidence', () => {
+  const attributes = profileSourceService.mapProfileToAttributes({
+    role: 'founder',
+    company_name: 'Acme',
+    website: ['https://acme.example'],
+    linkedin_url: 'https://linkedin.com/in/private-contact',
+  });
+  assert.deepEqual(attributes.evidence, [{ label: 'acme.example', url: 'https://acme.example' }]);
 });

@@ -1,12 +1,13 @@
 const swaggerJsdoc = require('swagger-jsdoc');
+const path = require('node:path');
 
 const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Gateway API',
-      version: '1.0.0',
-      description: 'Sandbox sample REST API gateway',
+      title: 'VietNexus Community API',
+      version: '2.0.0',
+      description: 'Authenticated profiles, trusted discovery, connection consent and opportunities.',
     },
     components: {
       securitySchemes: {
@@ -86,7 +87,7 @@ const swaggerSpec = swaggerJsdoc({
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: ['./src/routes/*.js'],
+  apis: [path.join(__dirname, '../routes/*.js')],
 });
 
 module.exports = swaggerSpec;

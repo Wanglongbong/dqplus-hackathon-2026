@@ -1,0 +1,49 @@
+.community-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 52px 32px 120px;
+}
+
+.community-page .serif-h1 { margin-top: 12px; }
+.community-tabs { margin-top: 22px; }
+.community-list { display: grid; gap: 14px; margin-top: 22px; }
+.community-empty, .community-alert { margin-top: 22px; color: var(--muted); text-align: center; }
+.community-alert { color: var(--err-deep); background: var(--err-bg); }
+
+.connection-card h2,
+.opportunity-card h2 { margin: 8px 0; font: 500 23px var(--font-serif); }
+.connection-card p,
+.opportunity-card p { color: var(--body); line-height: 1.6; white-space: pre-wrap; }
+.community-actions { display: flex; gap: 9px; margin-top: 18px; flex-wrap: wrap; }
+.report-action { margin-top: 16px; color: var(--err-soft); }
+.report-form { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 10px; }
+.report-form .label { grid-column: 1 / -1; margin: 0; }
+
+.contact-reveal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--accent-softer);
+  color: var(--accent);
+  font-size: 13px;
+}
+.contact-reveal a { color: var(--accent); }
+
+.opportunity-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; max-width: 1120px; }
+.opportunity-compose { position: sticky; top: 84px; align-self: start; }
+.opportunity-compose form { display: grid; gap: 11px; margin-top: 16px; }
+.opportunity-compose .label { margin: 5px 0 -3px; }
+.opportunity-owner { margin: 14px 0; color: var(--accent); font-size: 12.5px; font-weight: 600; }
+.compose-message { color: var(--accent); font-size: 13px; line-height: 1.5; }
+.opportunity-intro { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-soft); }
+.admin-section-title { margin: 34px 0 0; font: 500 24px var(--font-serif); }
+
+@media (max-width: 820px) {
+  .opportunity-layout { grid-template-columns: 1fr; }
+  .opportunity-compose { position: static; order: -1; }
+  .community-page { padding: 36px 18px 90px; }
+}

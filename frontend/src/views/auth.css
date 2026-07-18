@@ -28,6 +28,7 @@
   background: var(--accent);
   color: #fff;
   font: 600 17px var(--font-ui);
+  object-fit: cover;
 }
 
 .vn-auth-lockup {
@@ -96,13 +97,13 @@
   font-size: 13px;
 }
 
-.vn-auth-switch a {
+.vn-auth-switch .link-button {
   font-weight: 600;
   cursor: pointer;
   color: inherit;
 }
 
-.vn-auth-switch a:hover {
+.vn-auth-switch .link-button:hover {
   color: var(--text);
 }
 

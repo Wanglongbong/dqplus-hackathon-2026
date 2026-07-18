@@ -2,20 +2,83 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: dqplus-postgres
-    user: postgres
     environment:
-      POSTGRES_DB: ${DB_NAME:-gateway}
-      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_DB: ${DB_NAME:-dealflow}
+      POSTGRES_USER: ${DB_USER:-dqplus}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-gateway}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dqplus} -d ${DB_NAME:-dealflow}"]
       interval: 5s
       timeout: 3s
       retries: 10
+
+  gateway:
+    build: ./backend/gateway
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dealflow}
+      DB_USER: ${DB_USER:-dqplus}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?set INTERNAL_SERVICE_TOKEN in .env}
+      EXTRACT_SERVICE_URL: http://extract:3001
+      MATCH_SERVICE_URL: http://matching:3002
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-3000}:3000"
+
+  extract:
+    build: ./backend/agent/extract
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dealflow}
+      DB_USER: ${DB_USER:-dqplus}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  matching:
+    build: ./backend/matching-engine
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      HOST: 0.0.0.0
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dealflow}
+      DB_USER: ${DB_USER:-dqplus}
+      DB_PASSWORD: ${DB_PASSWORD}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    depends_on:
+      - gateway
+    ports:
+      - "${WEB_PORT:-5173}:80"
 
 volumes:
   pgdata:

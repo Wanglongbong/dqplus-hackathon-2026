@@ -28,6 +28,7 @@ const User = sequelize.define(
     profileId: {
       type: DataTypes.UUID,
       allowNull: true,
+      unique: true,
       field: 'profile_id',
     },
     role: {

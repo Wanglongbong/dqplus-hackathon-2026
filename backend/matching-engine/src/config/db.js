@@ -7,7 +7,7 @@ const pool = new Pool({
   database: process.env.DB_NAME || 'gateway',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : false,
 });
 
 module.exports = pool;

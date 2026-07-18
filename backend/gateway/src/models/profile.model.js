@@ -47,7 +47,7 @@ const Profile = sequelize.define(
       defaultValue: [],
     },
     description_product: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     checks: {
@@ -76,6 +76,70 @@ const Profile = sequelize.define(
     },
     year_founded: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    funding_ask_usd: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: true,
+    },
+    check_size_min_usd: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: true,
+    },
+    check_size_max_usd: {
+      type: DataTypes.DECIMAL(18, 2),
+      allowNull: true,
+    },
+    traction_summary: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    investment_thesis: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    portfolio_highlights: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    linkedin_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    verification_status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'unverified',
+    },
+    verification_method: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    verified_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    profile_status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'draft',
+    },
+    extraction_status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'pending',
+    },
+    visibility: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'community',
+    },
+    consent_version: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    consented_at: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },

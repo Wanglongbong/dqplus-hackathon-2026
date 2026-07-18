@@ -29,19 +29,26 @@ function normStage(value) {
 
 function mapProfileToAttributes(row) {
   const regions = toList(row.target_region || row.where_you_operate);
+  const evidence = (Array.isArray(row.website) ? row.website : [])
+    .filter(Boolean)
+    .map((url) => ({ label: String(url).replace(/^https?:\/\//, '').replace(/\/$/, ''), url }));
 
   if (row.role === 'investor') {
     return {
       firm_name: row.company_name || null,
       investor_type: null,
-      thesis: row.description_product || null,
+      thesis: row.investment_thesis || row.description_product || null,
       sectors: toList(row.industry),
       stages: normStage(row.stage) ? [normStage(row.stage)] : [],
       geographies: regions,
-      check_size_min_usd: null,
-      check_size_max_usd: parseNumber(row.avg_initial_investment),
-      portfolio_highlights: [],
+      check_size_min_usd: parseNumber(row.check_size_min_usd),
+      check_size_max_usd: parseNumber(row.check_size_max_usd),
+      portfolio_highlights: toList(row.portfolio_highlights),
       constraints: null,
+      verification_status: row.verification_status || 'unverified',
+      profile_status: row.profile_status || 'draft',
+      visibility: row.visibility || 'community',
+      evidence,
     };
   }
 
@@ -53,10 +60,14 @@ function mapProfileToAttributes(row) {
     target_regions: regions,
     team_size: row.num_of_employees ?? null,
     arr_usd: row.arr !== null && row.arr !== undefined ? Number(row.arr) : null,
-    funding_ask_usd: parseNumber(row.checks),
+    funding_ask_usd: parseNumber(row.funding_ask_usd || row.checks),
     business_model: null,
     product_description: row.description_product || null,
-    traction_summary: null,
+    traction_summary: row.traction_summary || null,
+    verification_status: row.verification_status || 'unverified',
+    profile_status: row.profile_status || 'draft',
+    visibility: row.visibility || 'community',
+    evidence,
   };
 }
 

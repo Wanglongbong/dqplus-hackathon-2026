@@ -50,12 +50,45 @@ router.use(authenticate);
 router.post('/', async (req, res, next) => {
   try {
     const { company_name: companyName } = req.body;
-    if (!companyName) {
+    if (!String(companyName || '').trim()) {
       return res.status(400).json({ error: 'company_name is required' });
     }
 
     const profile = await profileService.createProfile(req.user.sub, req.body);
     res.status(201).json(profile);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * @openapi
+ * /profiles/me:
+ *   get:
+ *     summary: Get the current user's private profile
+ *     tags: [Profiles]
+ *     responses:
+ *       200: { description: Current profile }
+ *   patch:
+ *     summary: Update the current user's private profile
+ *     tags: [Profiles]
+ *     responses:
+ *       200: { description: Updated profile }
+ */
+router.get('/me', async (req, res, next) => {
+  try {
+    const profile = await profileService.getOwnProfile(req.user.sub);
+    res.json(profileService.ownProfileJson(profile));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/me', async (req, res, next) => {
+  try {
+    const current = await profileService.getOwnProfile(req.user.sub);
+    const profile = await profileService.updateProfile(req.user.sub, current.id, req.body);
+    res.json(profileService.ownProfileJson(profile));
   } catch (err) {
     next(err);
   }
@@ -90,8 +123,8 @@ router.post('/', async (req, res, next) => {
  */
 router.get('/:id', async (req, res, next) => {
   try {
-    const profile = await profileService.getProfile(req.params.id);
-    res.json(profile);
+    const profile = await profileService.getProfileForOwner(req.user.sub, req.params.id);
+    res.json(profileService.ownProfileJson(profile));
   } catch (err) {
     next(err);
   }

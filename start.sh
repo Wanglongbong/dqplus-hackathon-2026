@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Starts postgres (pgvector) via docker compose, then all three backend services.
-# Ctrl+C stops the node services (postgres container keeps running).
-set -uo pipefail
+# Starts postgres, three backend services, and the web app.
+set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_DIR="$ROOT_DIR/logs"
@@ -11,20 +10,23 @@ SERVICES=(
   "backend/gateway:gateway"
   "backend/agent/extract:extract"
   "backend/matching-engine:matching-engine"
+  "frontend:web"
 )
 
 PIDS=()
 
 cleanup() {
+  status=$?
+  trap - INT TERM EXIT
   echo ""
   echo "Stopping services..."
   for pid in "${PIDS[@]}"; do
     kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null
-  exit 0
+  exit "$status"
 }
-trap cleanup INT TERM
+trap cleanup INT TERM EXIT
 
 # 1. Ensure env files exist (copy from .env.example on first run; never overwrite)
 if [ ! -f "$ROOT_DIR/.env" ] && [ -f "$ROOT_DIR/.env.example" ]; then
@@ -45,17 +47,23 @@ done
 echo "Starting postgres (pgvector) via docker compose..."
 if (cd "$ROOT_DIR" && docker compose up -d postgres); then
   echo "Waiting for postgres to become healthy..."
+  db_ready=false
   for i in $(seq 1 30); do
     status="$(docker inspect --format='{{.State.Health.Status}}' dqplus-postgres 2>/dev/null || echo unknown)"
     if [ "$status" = "healthy" ]; then
       echo "postgres is healthy."
+      db_ready=true
       break
     fi
     sleep 1
   done
+  if [ "$db_ready" != "true" ]; then
+    echo "Postgres did not become healthy in time."
+    exit 1
+  fi
 else
-  echo "Warning: could not start postgres via docker compose (is Docker running?)."
-  echo "Continuing — make sure a Postgres with pgvector is reachable at the DB_* settings in each service's .env."
+  echo "Could not start postgres. Start Docker and try again."
+  exit 1
 fi
 
 # 3. Start each node service (installing deps on first run)
@@ -66,7 +74,7 @@ for entry in "${SERVICES[@]}"; do
 
   if [ ! -d "$svc_path/node_modules" ]; then
     echo "Installing dependencies for $name..."
-    (cd "$svc_path" && npm install) || echo "Warning: npm install failed for $name; it may fail to start."
+    (cd "$svc_path" && npm ci)
   fi
 
   echo "Starting $name -> logs/$name.log"
@@ -74,10 +82,19 @@ for entry in "${SERVICES[@]}"; do
   PIDS+=("$!")
 done
 
+sleep 2
+for pid in "${PIDS[@]}"; do
+  if ! kill -0 "$pid" 2>/dev/null; then
+    echo "A service failed during startup. Check the files in logs/."
+    exit 1
+  fi
+done
+
 echo ""
 echo "gateway:         http://localhost:3000"
 echo "extract agent:   http://localhost:3001"
 echo "matching engine: http://localhost:3002"
+echo "web app:         http://localhost:5173"
 echo ""
 echo "Tailing logs (Ctrl+C to stop all services)..."
 tail -n +1 -f "$LOG_DIR"/*.log &

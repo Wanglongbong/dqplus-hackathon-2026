@@ -11,6 +11,26 @@
   gap: 20px;
 }
 
+.vn-profile-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.vn-verify-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--chip-off);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.vn-verify-pill.verified { background: var(--accent-soft); color: var(--accent); }
+.vn-verify-pill.pending { background: #fbf3dc; color: #8a6a20; }
+
 .vn-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

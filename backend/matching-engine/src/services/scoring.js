@@ -1,60 +1,71 @@
-function jaccard(a = [], b = []) {
-  if (!a.length || !b.length) return 0;
-  const setA = new Set(a.map((s) => String(s).toLowerCase()));
-  const setB = new Set(b.map((s) => String(s).toLowerCase()));
-  const intersection = [...setA].filter((x) => setB.has(x));
-  const union = new Set([...setA, ...setB]);
-  return intersection.length / union.size;
+function normalized(values = []) {
+  return [...new Set(values.map((value) => String(value).trim().toLowerCase()).filter(Boolean))];
 }
 
 function intersect(a = [], b = []) {
-  const setB = new Set(b.map((s) => String(s).toLowerCase()));
-  return a.map((s) => String(s).toLowerCase()).filter((x) => setB.has(x));
+  const setB = new Set(normalized(b));
+  return normalized(a).filter((value) => setB.has(value));
 }
 
-// founderAttrs: industry[], stage, target_regions[], funding_ask_usd
-// investorAttrs: sectors[], stages[], geographies[], check_size_min_usd, check_size_max_usd
-function scoreAttributes(founderAttrs, investorAttrs) {
+function founderCoverage(founderSectors = [], investorSectors = []) {
+  const founder = normalized(founderSectors);
+  if (!founder.length || !investorSectors.length) return 0;
+  return intersect(founder, investorSectors).length / founder.length;
+}
+
+function scoreAttributes(founderAttrs = {}, investorAttrs = {}) {
   const reasons = [];
+  const missingSignals = [];
   let score = 0;
+  let availableWeight = 0;
 
-  const sectorOverlap = jaccard(founderAttrs.industry, investorAttrs.sectors);
-  if (sectorOverlap > 0) {
-    score += 0.4 * sectorOverlap;
-    reasons.push(`sector overlap: ${intersect(founderAttrs.industry, investorAttrs.sectors).join(', ')}`);
-  }
+  if (founderAttrs.industry?.length && investorAttrs.sectors?.length) {
+    availableWeight += 0.4;
+    const overlap = intersect(founderAttrs.industry, investorAttrs.sectors);
+    const sectorFit = founderCoverage(founderAttrs.industry, investorAttrs.sectors);
+    score += 0.4 * sectorFit;
+    if (overlap.length) reasons.push(`sector fit: ${overlap.join(', ')}`);
+  } else missingSignals.push('sector data');
 
-  if (founderAttrs.stage && (investorAttrs.stages || []).map((s) => String(s).toLowerCase()).includes(String(founderAttrs.stage).toLowerCase())) {
-    score += 0.3;
-    reasons.push(`stage match: ${founderAttrs.stage}`);
-  }
+  if (founderAttrs.stage && investorAttrs.stages?.length) {
+    availableWeight += 0.3;
+    if (normalized(investorAttrs.stages).includes(String(founderAttrs.stage).toLowerCase())) {
+      score += 0.3;
+      reasons.push(`stage match: ${founderAttrs.stage}`);
+    }
+  } else missingSignals.push('stage preference');
 
-  const geos = (investorAttrs.geographies || []).map((s) => String(s).toLowerCase());
-  const regions = (founderAttrs.target_regions || []).map((s) => String(s).toLowerCase());
-  if (geos.includes('global') && regions.length) {
-    score += 0.2;
-    reasons.push('investor invests globally');
-  } else {
+  const geos = normalized(investorAttrs.geographies);
+  const regions = normalized(founderAttrs.target_regions);
+  if (geos.length && regions.length) {
+    availableWeight += 0.2;
     const geoOverlap = intersect(regions, geos);
-    if (geoOverlap.length) {
+    if (geos.includes('global') || geoOverlap.length) {
       score += 0.2;
-      reasons.push(`geography match: ${geoOverlap.join(', ')}`);
+      reasons.push(geos.includes('global') ? 'investor invests globally' : `geography match: ${geoOverlap.join(', ')}`);
     }
-  }
+  } else missingSignals.push('geography preference');
 
-  const ask = founderAttrs.funding_ask_usd;
-  const min = investorAttrs.check_size_min_usd;
-  const max = investorAttrs.check_size_max_usd;
-  if (ask != null && (min != null || max != null)) {
-    const aboveMin = min == null || ask >= min;
-    const belowMax = max == null || ask <= max;
-    if (aboveMin && belowMax) {
-      score += min != null && max != null ? 0.1 : 0.05;
-      reasons.push('check size fits funding ask');
+  const ask = Number(founderAttrs.funding_ask_usd);
+  const min = Number(investorAttrs.check_size_min_usd);
+  const max = Number(investorAttrs.check_size_max_usd);
+  const hasAsk = Number.isFinite(ask) && ask > 0;
+  const hasMin = Number.isFinite(min) && min > 0;
+  const hasMax = Number.isFinite(max) && max > 0;
+  if (hasAsk && (hasMin || hasMax)) {
+    availableWeight += 0.1;
+    if ((!hasMin || ask >= min) && (!hasMax || ask <= max)) {
+      score += 0.1;
+      reasons.push('ticket size fits the funding ask');
     }
-  }
+  } else missingSignals.push('funding ask or ticket range');
 
-  return { attributeScore: Math.min(score, 1), reasons };
+  return {
+    attributeScore: Number(Math.max(0, Math.min(score, 1)).toFixed(4)),
+    confidence: Number(availableWeight.toFixed(2)),
+    reasons,
+    missingSignals,
+  };
 }
 
 function scoreMatch(requesterRole, requesterAttrs, candidateAttrs) {
@@ -63,4 +74,4 @@ function scoreMatch(requesterRole, requesterAttrs, candidateAttrs) {
     : scoreAttributes(candidateAttrs, requesterAttrs);
 }
 
-module.exports = { scoreMatch, scoreAttributes, jaccard };
+module.exports = { scoreMatch, scoreAttributes, founderCoverage, intersect };

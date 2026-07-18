@@ -1,125 +1,71 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { riseIn, prefersReduced } from '../lib/anim.js';
 import './matches.css';
 
-const clamp = (n) => Math.max(0, Math.min(100, Math.round(n)));
-
-export default function MatchDetail({ candidate, rank, intent, emailLang, onLang, copied, onCopy, draftText, onBack }) {
+export default function MatchDetail({ candidate, rank, emailLang, onLang, copied, onCopy, draftText, canRequest, onBack, onRequest }) {
   const rootRef = useRef(null);
   const scoreRef = useRef(null);
+  const [intent, setIntent] = useState('fundraising');
+  const [message, setMessage] = useState(draftText || '');
+  const [requestState, setRequestState] = useState({ status: 'idle', message: '' });
 
+  useEffect(() => setMessage(draftText || ''), [draftText]);
   useGSAP(() => {
     if (!rootRef.current) return;
     riseIn(rootRef.current);
-    if (prefersReduced()) return;
-    if (scoreRef.current) {
-      gsap.from(scoreRef.current, { textContent: 0, duration: 0.8, ease: 'power2.out', snap: { textContent: 1 } });
-    }
-    const bars = rootRef.current.querySelectorAll('.vn-detail-bar-fill');
-    if (bars.length) {
-      gsap.from(bars, { scaleX: 0, transformOrigin: 'left center', duration: 0.7, ease: 'power3.out', stagger: 0.08 });
-    }
+    if (!prefersReduced() && scoreRef.current) gsap.from(scoreRef.current, { textContent: 0, duration: 0.7, snap: { textContent: 1 } });
   }, { scope: rootRef, dependencies: [candidate] });
 
-  const breakdown = [
-    { label: 'Profile similarity', val: clamp(candidate.vectorScore) },
-    { label: 'Attribute fit', val: clamp(candidate.attributeScore) },
-  ];
-  const facts = [
-    (intent === 'talent' ? 'Role · ' : 'Type · ') + candidate.type,
-    ...(candidate.sectors.length ? ['Focus · ' + candidate.sectors.join(', ')] : []),
-    'Fit score · ' + candidate.score + '/100',
-  ];
+  async function submitRequest() {
+    setRequestState({ status: 'loading', message: '' });
+    try {
+      await onRequest({ receiverUserId: candidate.userId, intent, message });
+      setRequestState({ status: 'success', message: 'Connection request sent. Contact stays private until they accept.' });
+    } catch (error) {
+      setRequestState({ status: 'error', message: error.message });
+    }
+  }
 
   return (
-    <div className="vn-detail-root" ref={rootRef}>
-      <a className="link rise" onClick={onBack}>← All matches</a>
-
+    <main className="vn-detail-root" ref={rootRef}>
+      <button type="button" className="link link-button rise" onClick={onBack}>← All matches</button>
       <div className="vn-detail-header rise">
         <div>
-          <div className="vn-detail-type">
-            <span className="dot" style={{ background: candidate.dot }}></span>
-            {candidate.type}
-          </div>
+          <div className="vn-detail-type"><span className="dot" style={{ background: candidate.dot }} />{candidate.type}{candidate.verified && ' · Verified'}</div>
           <h1 className="serif-h1 vn-detail-name">{candidate.name}</h1>
-          <div className="vn-detail-sectors">
-            {candidate.sectors.map((sec) => (
-              <span className="chip vn-detail-sector-chip" key={sec}>{sec}</span>
-            ))}
-          </div>
+          <div className="vn-detail-sectors">{candidate.sectors.map((sector) => <span className="chip" key={sector}>{sector}</span>)}</div>
         </div>
-        <div className="vn-detail-score-wrap">
-          <div className="vn-detail-score"><span ref={scoreRef}>{candidate.score}</span></div>
-          <div className="vn-detail-score-caption">Fit score</div>
-        </div>
+        <div className="vn-detail-score-wrap"><div className="vn-detail-score"><span ref={scoreRef}>{candidate.score}</span></div><div className="vn-detail-score-caption">Estimated fit</div></div>
       </div>
 
+      <section className="card rise vn-detail-section"><div className="card-label accent">Why this match</div><p className="vn-detail-rationale">{candidate.rationale}</p></section>
       <section className="card rise vn-detail-section">
-        <div className="card-label accent">Why this match</div>
-        <p className="vn-detail-rationale">{candidate.rationale}</p>
-      </section>
-
-      <section className="card rise vn-detail-section">
-        <div className="vn-detail-breakdown-head">
-          <div className="card-label">Fit breakdown</div>
-          <div className="vn-detail-breakdown-meta">rank #{rank}</div>
-        </div>
-        {breakdown.map((b) => (
-          <div className="vn-detail-bar-row" key={b.label}>
-            <span className="vn-detail-bar-label">{b.label}</span>
-            <span className="vn-detail-bar-track">
-              <i className="vn-detail-bar-fill" style={{ width: b.val + '%' }}></i>
-            </span>
-            <b className="vn-detail-bar-val">{b.val}</b>
-          </div>
+        <div className="vn-detail-breakdown-head"><div className="card-label">Fit breakdown</div><div className="vn-detail-breakdown-meta">rank #{rank} · confidence {candidate.confidence}%</div></div>
+        {[['Profile similarity', candidate.vectorScore], ['Attribute fit', candidate.attributeScore]].map(([label, value]) => (
+          <div className="vn-detail-bar-row" key={label}><span>{label}</span><span className="vn-detail-bar-track"><i className="vn-detail-bar-fill" style={{ width: value + '%' }} /></span><b>{value}</b></div>
         ))}
       </section>
 
-      {candidate.reasons.length > 0 && (
-        <section className="card rise vn-detail-section">
-          <div className="card-label vn-detail-facts-label">Match signals</div>
-          <div className="vn-detail-facts">
-            {candidate.reasons.map((r) => (
-              <div className="vn-detail-fact" key={r}>
-                <i className="vn-detail-fact-dot"></i>{r}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {candidate.missingSignals.length > 0 && <section className="card rise vn-detail-section vn-warning-card"><div className="card-label">Confidence limits</div><p>Missing: {candidate.missingSignals.join(', ')}. Treat the score as directional until these fields are verified.</p></section>}
 
       <section className="card rise vn-detail-section">
-        <div className="card-label vn-detail-facts-label">Key facts</div>
-        <div className="vn-detail-facts">
-          {facts.map((f) => (
-            <div className="vn-detail-fact" key={f}>
-              <i className="vn-detail-fact-dot"></i>{f}
-            </div>
-          ))}
-        </div>
+        <div className="card-label vn-detail-facts-label">Evidence</div>
+        {candidate.sources.length ? <div className="vn-detail-sources">{candidate.sources.map((source) => <a className="vn-detail-source" href={source.url} target="_blank" rel="noreferrer" key={source.url}><span>{source.label}</span><span className="vn-detail-source-open">Open source ↗</span></a>)}</div> : <div className="vn-detail-empty">No public source attached yet. Do not rely on this match without verification.</div>}
       </section>
 
       <section className="card rise vn-detail-section">
-        <div className="vn-detail-draft-head">
-          <div className="card-label">Draft introduction</div>
-          {draftText && (
-            <div className="seg vn-detail-lang-seg">
-              <button type="button" className={'seg-btn' + (emailLang === 'vi' ? ' active' : '')} onClick={() => onLang('vi')}>Tiếng Việt</button>
-              <button type="button" className={'seg-btn' + (emailLang === 'en' ? ' active' : '')} onClick={() => onLang('en')}>English</button>
-            </div>
-          )}
+        <div className="vn-detail-draft-head"><div className="card-label">Editable introduction</div><div className="seg"><button type="button" className={'seg-btn' + (emailLang === 'vi' ? ' active' : '')} onClick={() => onLang('vi')}>Tiếng Việt</button><button type="button" className={'seg-btn' + (emailLang === 'en' ? ' active' : '')} onClick={() => onLang('en')}>English</button></div></div>
+        <textarea className="textarea vn-request-message" value={message} onChange={(event) => setMessage(event.target.value)} />
+        <div className="vn-request-row">
+          <select className="select" value={intent} onChange={(event) => setIntent(event.target.value)}><option value="fundraising">Fundraising</option><option value="investment">Investment discussion</option><option value="pilot">Pilot</option><option value="partnership">Partnership</option></select>
+          <button type="button" className="btn btn-ghost" onClick={() => onCopy(message)}>{copied ? '✓ Copied' : 'Copy'}</button>
+          <button type="button" className="btn btn-primary" disabled={!canRequest || requestState.status === 'loading' || requestState.status === 'success'} onClick={submitRequest}>{requestState.status === 'loading' ? 'Sending…' : requestState.status === 'success' ? 'Request sent' : 'Request connection'}</button>
         </div>
-        {draftText && (
-          <>
-            <div className="vn-detail-draft-box">{draftText}</div>
-            <div className="vn-detail-copy-row">
-              <button type="button" className="btn-ghost vn-detail-copy-btn" onClick={onCopy}>{copied ? '✓ Copied' : 'Copy draft'}</button>
-            </div>
-          </>
-        )}
+        {!canRequest && <p className="inline-error">A moderator must verify your profile before you can send connection requests.</p>}
+        {requestState.message && <p className={requestState.status === 'error' ? 'inline-error' : 'inline-success'}>{requestState.message}</p>}
       </section>
-    </div>
+    </main>
   );
 }

@@ -41,7 +41,7 @@ export default function AuthGate({ onAuthed }) {
           : await register({ email, password, role });
       onAuthed({
         token,
-        user: { id: user.id, username: user.username, role: user.role, profileId: user.profileId },
+        user: { id: user.id, username: user.username, role: user.role, profileId: user.profileId, isAdmin: Boolean(user.isAdmin) },
       });
     } catch (e) {
       if (isNetworkError(e)) {
@@ -62,16 +62,16 @@ export default function AuthGate({ onAuthed }) {
     <div className="vn-auth-page" ref={rootRef}>
       <div className="vn-auth-col">
         <div className="vn-auth-logo rise">
-          <span className="vn-auth-tile">V</span>
+            <img className="vn-auth-tile" src="/logo.png" alt="" />
           <span className="vn-auth-lockup">
             <b>VietNexus</b>
-            <small>INNOVATION OS</small>
+            <small>TRUSTED STARTUP COMMUNITY</small>
           </span>
         </div>
 
         <h1 className="serif-h1 vn-auth-h1 rise">{authTitle}</h1>
         <p className="vn-auth-sub rise">
-          The ecosystem is private. Sign in to view profiles, signals and matches.
+          Find verified founders and investors, understand the fit, then connect with consent.
         </p>
 
         <div className="card vn-auth-card rise">
@@ -125,7 +125,7 @@ export default function AuthGate({ onAuthed }) {
           </button>
 
           <div className="vn-auth-switch">
-            {authSwitchText} <a onClick={toggleMode}>{authSwitchLink}</a>
+            {authSwitchText} <button type="button" className="link-button" onClick={toggleMode}>{authSwitchLink}</button>
           </div>
         </div>
 

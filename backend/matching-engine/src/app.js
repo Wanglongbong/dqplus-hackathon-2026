@@ -2,6 +2,7 @@ const express = require('express');
 const matchRouter = require('./routes/match.routes');
 const errorHandler = require('./middleware/errorHandler');
 const pool = require('./config/db');
+const serviceAuth = require('./middleware/serviceAuth');
 
 const app = express();
 
@@ -16,7 +17,7 @@ app.get('/health', async (req, res) => {
   }
 });
 
-app.use('/', matchRouter);
+app.use('/', serviceAuth, matchRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

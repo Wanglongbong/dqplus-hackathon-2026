@@ -1,101 +1,57 @@
 import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { INTENTS } from '../data/ecosystem.js';
 import { prefersReduced } from '../lib/anim.js';
 import './matches.css';
 
-export default function Matches({ role, profileName, intent, live, matchStatus, matchError, onRetry, onIntent, topK, onTopK, items, total, title, sub, onOpen, onBackToForm }) {
+export default function Matches({ role, matchStatus, matchError, onRetry, topK, onTopK, items, total, title, sub, onOpen, onBackToForm, onFeedback }) {
   const rootRef = useRef(null);
-
   useGSAP(() => {
     if (prefersReduced() || !rootRef.current) return;
-    const cards = rootRef.current.querySelectorAll('.vn-match-card');
-    if (!cards.length) return;
-    gsap.from(cards, { y: 14, autoAlpha: 0, duration: 0.45, ease: 'power2.out', stagger: 0.05, clearProps: 'all' });
-  }, { scope: rootRef, dependencies: [intent, topK, matchStatus] });
-
-  const ready = live && matchStatus === 'ready';
+    gsap.from(rootRef.current.querySelectorAll('.vn-match-card'), { y: 14, autoAlpha: 0, duration: 0.4, stagger: 0.04, clearProps: 'all' });
+  }, { scope: rootRef, dependencies: [topK, matchStatus] });
 
   return (
-    <div className="vn-match-root" ref={rootRef}>
-      <a className="link" onClick={onBackToForm}>← Edit profile</a>
-      <div className="eyebrow vn-match-eyebrow">Matches · reasoning-ranked</div>
+    <main className="vn-match-root" ref={rootRef}>
+      <button type="button" className="link link-button" onClick={onBackToForm}>← Improve profile</button>
+      <div className="eyebrow vn-match-eyebrow">Verified discovery · {role === 'investor' ? 'startup dealflow' : 'investor fit'}</div>
       <h1 className="serif-h1 vn-match-h1">{title}</h1>
-      <p className="lede vn-match-lede">{sub} Scored 0–100 so you don't spend time searching.</p>
+      <p className="lede vn-match-lede">{sub} Scores are estimates; every result shows evidence and missing data.</p>
 
-      <div className="vn-match-tabs">
-        {INTENTS.map((it) => (
-          <button
-            key={it.id}
-            type="button"
-            className={'vn-match-tab' + (it.id === intent ? ' active' : '')}
-            onClick={() => onIntent(it.id)}
-          >
-            {it.id === 'investors' && role === 'investor' ? 'Startup' : it.tab}
-          </button>
-        ))}
-      </div>
+      {matchStatus === 'loading' && <div className="card vn-match-empty"><p>Refreshing evidence and ranking your matches…</p></div>}
+      {matchStatus === 'error' && <div className="card vn-match-empty"><p>{matchError}</p><button type="button" className="btn btn-ghost" onClick={onRetry}>Try again</button></div>}
+      {matchStatus === 'ready' && !items.length && <div className="card vn-match-empty"><p>No verified matches yet. More members will appear as they complete their profiles.</p></div>}
 
-      {ready && items.length > 0 && (
-        <div className="vn-match-count-row">
-          <span className="vn-match-count">Showing top {items.length} of {total}</span>
-          <div className="seg vn-match-seg">
-            <button type="button" className={'seg-btn' + (topK === 5 ? ' active' : '')} onClick={() => onTopK(5)}>Top 5</button>
-            <button type="button" className={'seg-btn' + (topK === 10 ? ' active' : '')} onClick={() => onTopK(10)}>Top 10</button>
-            <button type="button" className={'seg-btn' + (topK >= total ? ' active' : '')} onClick={() => onTopK(999)}>All</button>
+      {matchStatus === 'ready' && items.length > 0 && (
+        <>
+          <div className="vn-match-count-row">
+            <span className="vn-match-count">Showing {items.length} of {total} trusted matches</span>
+            <div className="seg vn-match-seg">
+              {[5, 10].map((count) => <button key={count} type="button" className={'seg-btn' + (topK === count ? ' active' : '')} onClick={() => onTopK(count)}>Top {count}</button>)}
+              <button type="button" className={'seg-btn' + (topK >= total ? ' active' : '')} onClick={() => onTopK(999)}>All</button>
+            </div>
           </div>
-        </div>
-      )}
-
-      {!live && (
-        <div className="card vn-match-empty">
-          <p>This match type isn't connected to a backend service yet — only {role === 'investor' ? 'startup' : 'investor'} matching is live today.</p>
-        </div>
-      )}
-
-      {live && matchStatus === 'loading' && (
-        <div className="card vn-match-empty">
-          <p>Ranking matches from your profile…</p>
-        </div>
-      )}
-
-      {live && matchStatus === 'error' && (
-        <div className="card vn-match-empty">
-          <p>{matchError}</p>
-          <button type="button" className="btn btn-ghost" onClick={onRetry}>Try again</button>
-        </div>
-      )}
-
-      {ready && items.length === 0 && (
-        <div className="card vn-match-empty">
-          <p>No matches yet. As more {role === 'investor' ? 'startups' : 'investors'} join the ecosystem, they'll show up here ranked by fit.</p>
-        </div>
-      )}
-
-      {ready && (
-        <div className="vn-match-list">
-          {items.map(({ candidate, rank }) => (
-            <article
-              key={candidate.userId}
-              className="vn-match-card rise"
-              onClick={() => onOpen({ candidate, rank })}
-            >
-              <div className="vn-match-rank">#{rank}</div>
-              <div className="vn-match-score">{candidate.score}</div>
-              <div className="vn-match-body">
-                <div className="vn-match-type">
-                  <span className="dot" style={{ background: candidate.dot }}></span>
-                  {candidate.type}
+          <div className="vn-match-list">
+            {items.map(({ candidate, rank }) => (
+              <article key={candidate.userId} className="vn-match-card rise">
+                <div className="vn-match-rank">#{rank}</div>
+                <div className="vn-match-score" aria-label={`Estimated fit ${candidate.score} out of 100`}>{candidate.score}</div>
+                <button type="button" className="vn-match-body-button" onClick={() => onOpen({ candidate, rank })}>
+                  <span className="vn-match-type"><span className="dot" style={{ background: candidate.dot }} />{candidate.type}{candidate.verified && ' · Verified'}</span>
+                  <strong className="vn-match-name">{candidate.name}</strong>
+                  <span className="vn-match-rationale">{candidate.rationale}</span>
+                  <span className="vn-match-confidence">Confidence {candidate.confidence}% · {candidate.sources.length} source{candidate.sources.length === 1 ? '' : 's'}</span>
+                </button>
+                <div className="vn-match-actions">
+                  <button type="button" className={`mini-action${candidate.saved ? ' active' : ''}`} onClick={() => onFeedback(candidate, 'saved')}>{candidate.saved ? '✓ Saved' : 'Save'}</button>
+                  <button type="button" className="mini-action" onClick={() => onFeedback(candidate, 'not_relevant')}>Not relevant</button>
+                  <button type="button" className="vn-match-analysis" onClick={() => onOpen({ candidate, rank })}>Analysis →</button>
                 </div>
-                <h3 className="vn-match-name">{candidate.name}</h3>
-                <p className="vn-match-rationale">{candidate.rationale}</p>
-              </div>
-              <span className="vn-match-analysis">Analysis →</span>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        </>
       )}
-    </div>
+    </main>
   );
 }

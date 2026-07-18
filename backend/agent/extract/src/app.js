@@ -2,6 +2,7 @@ const express = require('express');
 const extractRouter = require('./routes/extract.routes');
 const errorHandler = require('./middleware/errorHandler');
 const pool = require('./config/db');
+const serviceAuth = require('./middleware/serviceAuth');
 
 const app = express();
 
@@ -16,7 +17,7 @@ app.get('/health', async (req, res) => {
   }
 });
 
-app.use('/', extractRouter);
+app.use('/', serviceAuth, extractRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });

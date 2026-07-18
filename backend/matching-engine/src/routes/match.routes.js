@@ -4,7 +4,7 @@ const { findMatches } = require('../services/matching.service');
 const router = Router();
 
 function parseLimit(value) {
-  const n = Number(value) || 10;
+  const n = Number.parseInt(value, 10) || 10;
   return Math.min(Math.max(n, 1), 50);
 }
 
