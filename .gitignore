@@ -25,3 +25,5 @@ pids/
 .claude/plans/
 .claude/session-logs/
 Claude-Sessions/
+.vercel
+.env.local
