@@ -7,6 +7,9 @@ const connectionRouter = require('./routes/connection.routes');
 const opportunityRouter = require('./routes/opportunity.routes');
 const discoveryRouter = require('./routes/discovery.routes');
 const adminRouter = require('./routes/admin.routes');
+const publicRouter = require('./routes/public.routes');
+const coffeeSessionRouter = require('./routes/coffeeSession.routes');
+const paymentWebhookRouter = require('./routes/paymentWebhook.routes');
 const errorHandler = require("./middleware/errorHandler");
 const rateLimit = require('./middleware/rateLimit');
 const { sequelize } = require("./models");
@@ -18,7 +21,7 @@ if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
 const corsOrigin = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",")
-  : /^https?:\/\/(dqplus\.ddns\.net|localhost|127\.0\.0\.1)(:\d+)?$/;
+  : /^https?:\/\/(dqplus\.ddns\.net|deal-flow-matchmaker\.vercel\.app|localhost|127\.0\.0\.1)(:\d+)?$/;
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '256kb' }));
 
@@ -33,11 +36,14 @@ app.get("/health", async (req, res) => {
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/auth", rateLimit({ windowMs: 15 * 60 * 1000, max: 40 }), authRouter);
+app.use('/public', rateLimit({ windowMs: 60 * 1000, max: 240 }), publicRouter);
+app.use('/webhooks', paymentWebhookRouter);
 app.use("/profiles", profileRouter);
 app.use('/connections', connectionRouter);
 app.use('/opportunities', opportunityRouter);
 app.use('/discovery', discoveryRouter);
 app.use('/admin', adminRouter);
+app.use('/coffee-sessions', coffeeSessionRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });

@@ -3,6 +3,22 @@
     {
       "source": "/api/backend/:path*",
       "destination": "https://dqplus.ddns.net/api/backend/:path*"
+    },
+    {
+      "source": "/deals/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/deals",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/coffee-chat",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/index.html"
     }
   ],
   "headers": [

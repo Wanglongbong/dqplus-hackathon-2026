@@ -7,6 +7,7 @@ import MatchDetail from './views/MatchDetail.jsx';
 import ConnectionInbox from './views/ConnectionInbox.jsx';
 import OpportunityBoard from './views/OpportunityBoard.jsx';
 import AdminPanel from './views/AdminPanel.jsx';
+import PublicExperience from './views/PublicExperience.jsx';
 import { genDraft } from './lib/draft.js';
 import {
   ApiError, closeOpportunity, createOpportunity, fromProfile, getAdminReview, getMatches, getProfile,
@@ -32,6 +33,8 @@ function storeSession(value) {
 
 export default function App() {
   const [session, setSession] = useState(readSession);
+  const [mode, setMode] = useState('public');
+  const [publicIntent, setPublicIntent] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [profile, setProfile] = useState(null);
   const [view, setView] = useState('form');
@@ -103,8 +106,13 @@ export default function App() {
   };
   const missing = Object.keys(validity).filter((key) => !validity[key]).map((key) => missingLabels[key]);
 
-  function handleAuthed(next) { setSession(next); storeSession(next); setView('form'); }
-  function logout() { setSession(null); storeSession(null); setProfile(null); setForm(emptyForm); setMatches({ status: 'idle', items: [], error: '' }); setView('form'); }
+  function handleAuthed(next) {
+    setSession(next);
+    storeSession(next);
+    setView('form');
+    setMode(publicIntent ? 'public' : 'dashboard');
+  }
+  function logout() { setSession(null); storeSession(null); setProfile(null); setForm(emptyForm); setMatches({ status: 'idle', items: [], error: '' }); setView('form'); setMode('public'); }
   function onField(key, value) { setForm((current) => ({ ...current, [key]: value })); setStatus('draft'); setSavedAt(0); }
   function toggleSector(id) { setForm((current) => ({ ...current, sectors: current.sectors.includes(id) ? current.sectors.filter((item) => item !== id) : [...current.sectors, id] })); setStatus('draft'); }
 
@@ -165,7 +173,9 @@ export default function App() {
     try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setCopied(false); }
   }
 
-  if (!session) return <AuthGate onAuthed={handleAuthed} />;
+  if (mode === 'auth') return <><div className="auth-backbar"><button onClick={() => setMode('public')}>← Về trang public</button></div><AuthGate onAuthed={handleAuthed} /></>;
+  if (mode === 'public') return <PublicExperience session={session} initialIntent={publicIntent} onSignIn={() => { setPublicIntent(null); setMode('auth'); }} onRequireAuth={(intent) => { setPublicIntent(intent); setMode('auth'); }} onDashboard={() => setMode('dashboard')} />;
+  if (!session) return <PublicExperience session={null} onSignIn={() => setMode('auth')} onRequireAuth={(intent) => { setPublicIntent(intent); setMode('auth'); }} onDashboard={() => setMode('dashboard')} />;
 
   const shown = topK >= matches.items.length ? matches.items : matches.items.slice(0, topK);
   const matchItems = shown.map((candidate, index) => ({ candidate, rank: index + 1 }));

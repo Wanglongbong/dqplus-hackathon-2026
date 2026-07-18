@@ -73,6 +73,22 @@ services:
       postgres:
         condition: service_healthy
 
+  source-refresh:
+    build: ./backend/gateway
+    command: node src/workers/sourceRefresh.worker.js
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-dealflow}
+      DB_USER: ${DB_USER:-dqplus}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SOURCE_REFRESH_INTERVAL_MS: ${SOURCE_REFRESH_INTERVAL_MS:-86400000}
+      SOURCE_REFRESH_BATCH_SIZE: ${SOURCE_REFRESH_BATCH_SIZE:-50}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   web:
     build: ./frontend
     depends_on:

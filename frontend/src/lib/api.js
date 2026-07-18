@@ -39,6 +39,34 @@ export function register({ email, password, role }) {
   });
 }
 
+export function getPublicDeals() {
+  return request(BACKEND + '/public/deals');
+}
+
+export function getPublicPulse() {
+  return request(BACKEND + '/public/pulse');
+}
+
+export function getPublicConstellation() {
+  return request(BACKEND + '/public/constellation');
+}
+
+export function createCoffeeSession(token, payload) {
+  return request(BACKEND + '/coffee-sessions', { method: 'POST', token, body: payload });
+}
+
+export function getCoffeeSession(token, id) {
+  return request(BACKEND + '/coffee-sessions/' + encodeURIComponent(id), { token });
+}
+
+export function respondToCoffeeInvite(token, id, payload) {
+  return request(BACKEND + '/coffee-sessions/' + encodeURIComponent(id) + '/respond', { method: 'POST', token, body: payload });
+}
+
+export function createCoffeeCheckout(token, id) {
+  return request(BACKEND + '/coffee-sessions/' + encodeURIComponent(id) + '/checkout', { method: 'POST', token });
+}
+
 export function getProfile(token) {
   return request(BACKEND + '/profiles/me', { token });
 }
